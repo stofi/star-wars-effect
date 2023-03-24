@@ -9,19 +9,19 @@ import { Perf } from 'r3f-perf'
 
 import Scene from '#/Scene'
 
+import Effects from './Effects'
+
 export default function Experience(props: { enableDebug?: boolean }) {
   return (
     <>
       <Leva hidden={!props.enableDebug} />
       <Canvas
         flat={false}
-        shadows={true}
-        dpr={1}
-        camera={{
-          position: [5, 5, 5],
-        }}
+        shadows={false}
+        dpr={2}
+        camera={{ position: [0, 0, 10], fov: 15 }}
       >
-        <color args={['lightblue']} attach='background' />
+        {/* <color args={['lightblue']} attach='background' /> */}
         {props.enableDebug && (
           <>
             <axesHelper args={[5]} />
@@ -32,6 +32,7 @@ export default function Experience(props: { enableDebug?: boolean }) {
         <Suspense>
           <Physics>
             {props.enableDebug && <Debug />}
+            <Effects />
             <Scene />
           </Physics>
         </Suspense>

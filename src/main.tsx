@@ -28,7 +28,7 @@ function App() {
 
   return (
     <KeyboardControls map={map}>
-      <Experience enableDebug />
+      <Experience enableDebug={false} />
       <Dom />
     </KeyboardControls>
   )
