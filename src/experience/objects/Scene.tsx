@@ -132,16 +132,21 @@ export default function Scene() {
     let t = time
     t = t % 1
 
+    const x = time % 3
+
     stickBlueRef.current.visible = true
 
     const o = Math.cos(t * Math.PI)
 
-    stickBlueRef.current.position.y = o * spread
-    stickBlueRef.current.position.x = o * spread
-
-    stickBlueRef.current.rotation.z = t * Math.PI
-
-    const x = time % 3
+    if (x > 2) {
+      stickBlueRef.current.position.y = o * spread
+      stickBlueRef.current.position.x = o * spread
+      stickBlueRef.current.rotation.z = t * Math.PI * 0.6
+    } else {
+      stickBlueRef.current.position.y = -o * spread
+      stickBlueRef.current.position.x = -o * spread
+      stickBlueRef.current.rotation.z = t * Math.PI * -1.5
+    }
 
     if (x > 1 && x < 2) {
       stickBlueRef.current.visible = false

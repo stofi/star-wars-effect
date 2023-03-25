@@ -10,25 +10,65 @@ import {
 import { useControls } from 'leva'
 
 export default function Effects() {
-  const { enableBloom, enableDepthOfField, enableNoise, enableVignette } =
-    useControls('Effects', {
-      enableBloom: {
-        value: true,
-        label: 'Bloom',
-      },
-      enableDepthOfField: {
-        value: false,
-        label: 'Depth of Field',
-      },
-      enableNoise: {
-        value: true,
-        label: 'Noise',
-      },
-      enableVignette: {
-        value: true,
-        label: 'Vignette',
-      },
-    })
+  const {
+    enableBloom,
+    enableDepthOfField,
+    enableNoise,
+    enableVignette,
+    luminanceSmoothing,
+    luminanceThreshold,
+    intensity,
+    levels,
+    radius,
+  } = useControls('Effects', {
+    enableBloom: {
+      value: true,
+      label: 'Bloom',
+    },
+    enableDepthOfField: {
+      value: false,
+      label: 'Depth of Field',
+    },
+    enableNoise: {
+      value: true,
+      label: 'Noise',
+    },
+    enableVignette: {
+      value: true,
+      label: 'Vignette',
+    },
+    luminanceSmoothing: {
+      value: 0.5,
+      min: 0,
+      max: 1,
+      label: 'Smoothing',
+    },
+    luminanceThreshold: {
+      value: 0.1,
+      min: 0,
+      max: 2,
+      label: 'Threshold',
+    },
+    intensity: {
+      value: 0.5,
+      min: 0,
+      max: 10,
+      label: 'Intensity',
+    },
+    levels: {
+      value: 1,
+      min: 0,
+      max: 10,
+      step: 1,
+      label: 'Levels',
+    },
+    radius: {
+      value: 4,
+      min: 0,
+      max: 10,
+      label: 'Radius',
+    },
+  })
 
   return (
     <EffectComposer>
@@ -42,8 +82,11 @@ export default function Effects() {
       )}
       {enableBloom && (
         <Bloom
-          luminanceThreshold={0.5}
-          luminanceSmoothing={0.9}
+          luminanceSmoothing={luminanceSmoothing}
+          luminanceThreshold={luminanceThreshold}
+          intensity={intensity}
+          levels={levels}
+          radius={radius}
           height={1024}
         />
       )}
