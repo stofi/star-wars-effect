@@ -1,258 +1,164 @@
 import * as THREE from 'three'
+import { BufferGeometry, Float32BufferAttribute } from 'three'
 import { useRef } from 'react'
 
-import { Environment, Float } from '@react-three/drei'
+import {
+  Environment,
+  Float,
+  OrthographicCamera,
+  useFBO,
+} from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 
 import { useControls } from 'leva'
 
 import Bunny from '#/Bunny'
+import fragmentShader from '#/fragment.glsl'
 import Mug from '#/Mug'
 import Suzanne from '#/Suzanne'
+import Transition, { TransitionAPI } from '#/Transition'
+import vertexShader from '#/vertex.glsl'
 import MetalMaterial from '$/materials/Metal'
 
-const sphere = new THREE.SphereGeometry(1, 16, 16)
+const getFullscreenTriangle = () => {
+  const geometry = new BufferGeometry()
 
-const topMaterial = new THREE.MeshBasicMaterial({
-  color: '#404040',
-  side: THREE.BackSide,
-  transparent: true,
-  opacity: 0.25,
-})
+  geometry.setAttribute(
+    'position',
+    new Float32BufferAttribute([-1, -1, 3, -1, -1, 3], 2),
+  )
 
-const bottomMaterial = new THREE.MeshBasicMaterial({
-  color: '#020202',
-  side: THREE.BackSide,
-  transparent: true,
-  opacity: 0.25,
-})
+  geometry.setAttribute('uv', new Float32BufferAttribute([0, 0, 2, 0, 0, 2], 2))
 
-const stick = new THREE.CylinderGeometry(0.05, 0.05, 1.5, 16)
-const stickBlue = new THREE.MeshBasicMaterial({ color: '#15f2fd' })
-const stickRed = new THREE.MeshBasicMaterial({ color: '#f00' })
+  return geometry
+}
 
-const smoothstep = (x: number, min: number, max: number) => {
-  if (x <= min) return 0
-  if (x >= max) return 1
+const smoothstep = (x: number, min = 0, max = 1) => {
+  const t = Math.max(0, Math.min(1, (x - min) / (max - min)))
 
-  x = (x - min) / (max - min)
-
-  return x * x * (3 - 2 * x)
+  return t * t * (3 - 2 * t)
 }
 
 export default function Scene() {
-  // const redLightRef = useRef<THREE.PointLight | null>(null)
-  // const blueLightRef = useRef<THREE.PointLight | null>(null)
-  const bunnyMaterialRef = useRef<THREE.MeshPhysicalMaterial | null>(null)
-  const mugMaterialRef = useRef<THREE.MeshPhysicalMaterial | null>(null)
-  const suzanneMaterialRef = useRef<THREE.MeshPhysicalMaterial | null>(null)
-
-  const bunnyRef = useRef<THREE.Group | null>(null)
-  const mugRef = useRef<THREE.Group | null>(null)
-  const suzanneRef = useRef<THREE.Group | null>(null)
-
-  const stickBlueRef = useRef<THREE.Mesh | null>(null)
-  const stickRedRef = useRef<THREE.Mesh | null>(null)
-
-  const { spread, timeScale } = useControls({
-    spread: {
-      value: 40,
-      min: 0,
-      max: 100,
-    },
-
+  const { timeScale, progress } = useControls({
     timeScale: {
       value: 0.5,
       min: 0,
       max: 10,
     },
+    progress: {
+      value: 0,
+      min: 0,
+      max: 1,
+    },
   })
 
-  const getOpacity = (time: number) => {
-    let t = time
-    t = t % 1
+  const transitionARef = useRef<TransitionAPI | null>(null)
+  const transitionBRef = useRef<TransitionAPI | null>(null)
+  const transitionCRef = useRef<TransitionAPI | null>(null)
 
-    let o = Math.sin(t * Math.PI)
-    o = Math.pow(o, 0.8)
-    o = smoothstep(o, 0, 0.75)
+  const screenCamera = useRef<THREE.OrthographicCamera | null>(null)
+  const screenMesh = useRef<THREE.Mesh | null>(null)
 
-    return o
-  }
+  const renderTargetA = useFBO()
+  const renderTargetB = useFBO()
+  const renderTargetC = useFBO()
 
-  const handleBunny = (time: number) => {
-    if (!bunnyMaterialRef.current || !bunnyRef.current) return
-
-    const x = time % 3
-
-    if (x < 0 || x > 1) {
-      bunnyRef.current.visible = false
-
+  useFrame(({ gl, camera, clock }) => {
+    if (
+      !transitionARef.current ||
+      !transitionBRef.current ||
+      !transitionCRef.current
+    )
       return
-    }
-    bunnyRef.current.visible = true
+    if (!screenMesh.current) return
+    const material = screenMesh.current.material as THREE.ShaderMaterial
+    if (!material) return
+    const t = clock.elapsedTime * timeScale
+    transitionARef.current.setT(t)
+    transitionBRef.current.setT(t)
+    transitionCRef.current.setT(t)
+    const scene1 = transitionARef.current.scene
+    const scene2 = transitionBRef.current.scene
+    const scene3 = transitionCRef.current.scene
+    // console.log(camera)
 
-    bunnyMaterialRef.current.opacity = getOpacity(time)
-  }
+    if (!scene1 || !scene2 || !scene3) return
+    gl.setRenderTarget(renderTargetA)
+    gl.render(scene1, camera)
 
-  const handleMug = (time: number) => {
-    if (!mugMaterialRef.current || !mugRef.current) return
+    gl.setRenderTarget(renderTargetB)
+    gl.render(scene2, camera)
 
-    const x = time % 3
+    gl.setRenderTarget(renderTargetC)
+    gl.render(scene3, camera)
 
-    if (x < 2 || x > 3) {
-      mugRef.current.visible = false
+    material.uniforms.textureA.value = renderTargetA.texture
+    material.uniforms.textureB.value = renderTargetB.texture
+    material.uniforms.textureC.value = renderTargetC.texture
+    const x = t % 3
 
-      return
-    }
+    material.uniforms.fadeA.value =
+      x < 1 ? smoothstep(Math.sin((t % 1) * Math.PI)) : 0
 
-    mugRef.current.visible = true
+    material.uniforms.fadeB.value =
+      x > 1 && x < 2 ? smoothstep(Math.sin((t % 1) * Math.PI)) : 0
 
-    mugMaterialRef.current.opacity = getOpacity(time)
-  }
+    material.uniforms.fadeC.value =
+      x > 2 ? smoothstep(Math.sin((t % 1) * Math.PI)) : 0
 
-  const handleSuzanne = (time: number) => {
-    if (!suzanneMaterialRef.current || !suzanneRef.current) return
-
-    const x = time % 3
-
-    if (x < 1 || x > 2) {
-      suzanneRef.current.visible = false
-
-      return
-    }
-
-    suzanneRef.current.visible = true
-
-    suzanneMaterialRef.current.opacity = getOpacity(time)
-  }
-
-  const handleBlueStick = (time: number) => {
-    if (!stickBlueRef.current) return
-
-    let t = time
-    t = t % 1
-
-    const x = time % 3
-
-    stickBlueRef.current.visible = true
-
-    const o = Math.cos(t * Math.PI)
-
-    if (x > 2) {
-      stickBlueRef.current.position.y = o * spread * 2
-      stickBlueRef.current.position.x = o * spread
-      stickBlueRef.current.rotation.z = t * Math.PI * 1.2
-    } else {
-      stickBlueRef.current.position.y = -o * spread
-      stickBlueRef.current.position.x = -o * spread
-      stickBlueRef.current.rotation.z = Math.pow(t, 4) * Math.PI * -1.5
-    }
-
-    if (x > 1 && x < 2) {
-      stickBlueRef.current.visible = false
-    } else {
-      stickBlueRef.current.visible = true
-    }
-
-    if (stickBlueRef.current.material instanceof THREE.MeshBasicMaterial) {
-      stickBlueRef.current.material.opacity = getOpacity(time)
-    }
-  }
-
-  const handleRedStick = (time: number) => {
-    if (!stickRedRef.current) return
-
-    let t = time
-    t = t % 1
-
-    stickRedRef.current.visible = true
-    stickRedRef.current.position.y = -Math.cos(t * Math.PI) * spread
-    stickRedRef.current.position.x = Math.sin(t * Math.PI) * spread
-
-    stickRedRef.current.rotation.z = t * Math.PI * -0.7
-
-    const x = time % 3
-
-    if (x < 1 || x > 2) {
-      stickRedRef.current.visible = false
-    } else {
-      stickRedRef.current.visible = true
-    }
-
-    if (stickRedRef.current.material instanceof THREE.MeshBasicMaterial) {
-      stickRedRef.current.material.opacity = getOpacity(time)
-    }
-  }
-
-  useFrame((scene) => {
-    const time = scene.clock.elapsedTime * timeScale
-    handleBunny(time)
-    handleSuzanne(time)
-    handleMug(time)
-    // handleMug(time)
-    handleBlueStick(time)
-    handleRedStick(time)
+    gl.setRenderTarget(null)
   })
 
   return (
     <>
-      <Environment
-        frames={Infinity}
-        background={false}
-        // frames={1}
-        near={1}
-        far={1000}
-        resolution={1024 / 4}
+      <OrthographicCamera ref={screenCamera} args={[-1, 1, 1, -1, 0, 1]} />
+      <mesh
+        ref={screenMesh}
+        geometry={getFullscreenTriangle()}
+        frustumCulled={false}
       >
-        <mesh
-          scale={10}
-          position={[3, 8, -15]}
-          geometry={sphere}
-          material={topMaterial}
+        <shaderMaterial
+          uniforms={{
+            textureA: {
+              value: null,
+            },
+            textureB: {
+              value: null,
+            },
+            textureC: {
+              value: null,
+            },
+            fadeA: {
+              value: 0,
+            },
+            fadeB: {
+              value: 0,
+            },
+            fadeC: {
+              value: 0,
+            },
+          }}
+          vertexShader={vertexShader}
+          fragmentShader={fragmentShader}
         />
-        <mesh scale={100} geometry={sphere} material={bottomMaterial} />
-        <mesh
-          scale={100}
-          ref={stickBlueRef}
-          position={[0, 0, 15]}
-          geometry={stick}
-          material={stickBlue}
-          rotation={[0, 0, Math.PI / 3]}
-        />
-        <mesh
-          scale={100}
-          ref={stickRedRef}
-          position={[0, 0, 15]}
-          geometry={stick}
-          material={stickRed}
-          rotation={[0, 0, -Math.PI / 3]}
-        />
-      </Environment>
+      </mesh>
 
-      {/* <pointLight
-        ref={redLightRef}
-        position={[0, 0, 10]}
-        color='red'
-        intensity={10}
-      />
-      <pointLight
-        ref={blueLightRef}
-        position={[0, 0, 10]}
-        color='#15f2fd'
-        intensity={10}
-      /> */}
-
-      <Float rotationIntensity={0.2} speed={4} floatIntensity={0.1}>
-        <Bunny ref={bunnyRef} visible={false}>
-          <MetalMaterial ref={bunnyMaterialRef} />
+      <Transition ref={transitionARef} color='#15f2fd'>
+        <Bunny>
+          <MetalMaterial />
         </Bunny>
-        <Suzanne ref={suzanneRef} visible={false}>
-          <MetalMaterial ref={suzanneMaterialRef} />
+      </Transition>
+      <Transition ref={transitionBRef} color='red'>
+        <Suzanne>
+          <MetalMaterial />
         </Suzanne>
-        <Mug ref={mugRef} visible={false}>
-          <MetalMaterial ref={mugMaterialRef} />
+      </Transition>
+      <Transition ref={transitionCRef} color='green'>
+        <Mug>
+          <MetalMaterial />
         </Mug>
-      </Float>
+      </Transition>
     </>
   )
 }
