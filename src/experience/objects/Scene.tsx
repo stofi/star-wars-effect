@@ -33,23 +33,35 @@ const getFullscreenTriangle = () => {
   return geometry
 }
 
-const smoothstep = (x: number, min = 0, max = 1) => {
-  const t = Math.max(0, Math.min(1, (x - min) / (max - min)))
+function interpolate(t: number, startT: number, endT: number, spread: number) {
+  if (t < startT - spread) {
+    return 0
+  } else if (t <= startT + spread) {
+    const ratio = (t - (startT - spread)) / (2 * spread)
 
-  return t * t * (3 - 2 * t)
+    return ratio
+  } else if (t < endT - spread) {
+    return 1
+  } else if (t <= endT + spread) {
+    const ratio = 1 - (t - (endT - spread)) / (2 * spread)
+
+    return ratio
+  } else {
+    return 0
+  }
 }
 
 export default function Scene() {
-  const { timeScale, progress } = useControls({
+  const { timeScale, spread } = useControls({
     timeScale: {
       value: 0.5,
       min: 0,
       max: 10,
     },
-    progress: {
-      value: 0,
+    spread: {
+      value: 20,
       min: 0,
-      max: 1,
+      max: 100,
     },
   })
 
@@ -96,18 +108,34 @@ export default function Scene() {
     material.uniforms.textureA.value = renderTargetA.texture
     material.uniforms.textureB.value = renderTargetB.texture
     material.uniforms.textureC.value = renderTargetC.texture
-    const x = t % 3
+
+    const offset = 0.2
+    const x = (t % (3 + offset * 2)) - offset
 
     material.uniforms.fadeA.value =
-      x < 1 ? smoothstep(Math.sin((t % 1) * Math.PI)) : 0
-
-    material.uniforms.fadeB.value =
-      x > 1 && x < 2 ? smoothstep(Math.sin((t % 1) * Math.PI)) : 0
-
-    material.uniforms.fadeC.value =
-      x > 2 ? smoothstep(Math.sin((t % 1) * Math.PI)) : 0
+      interpolate(x, 0, 1, offset) + interpolate(x, 3, 4, offset)
+    material.uniforms.fadeB.value = interpolate(x, 1, 2, offset)
+    material.uniforms.fadeC.value = interpolate(x, 2, 3, offset)
 
     gl.setRenderTarget(null)
+  })
+
+  const animationA = (t: number) => ({
+    x: Math.sin(t) * spread,
+    y: Math.cos(t) * spread,
+    r: t * 0.6,
+  })
+
+  const animationB = (t: number) => ({
+    x: Math.sin(t) * spread,
+    y: Math.cos(t) * spread,
+    r: t,
+  })
+
+  const animationC = (t: number) => ({
+    x: (Math.abs((t % 2) - 1) - 0.5) * spread,
+    y: 0,
+    r: t * 1.2,
   })
 
   return (
@@ -144,17 +172,17 @@ export default function Scene() {
         />
       </mesh>
 
-      <Transition ref={transitionARef} color='#15f2fd'>
+      <Transition ref={transitionARef} color='#15f2fd' animation={animationA}>
         <Bunny>
           <MetalMaterial />
         </Bunny>
       </Transition>
-      <Transition ref={transitionBRef} color='red'>
+      <Transition ref={transitionBRef} color='red' animation={animationB}>
         <Suzanne>
           <MetalMaterial />
         </Suzanne>
       </Transition>
-      <Transition ref={transitionCRef} color='green'>
+      <Transition ref={transitionCRef} color='green' animation={animationC}>
         <Mug>
           <MetalMaterial />
         </Mug>

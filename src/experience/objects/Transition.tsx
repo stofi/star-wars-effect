@@ -4,8 +4,6 @@ import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react'
 import { Environment, Float } from '@react-three/drei'
 import { createPortal, GroupProps, useFrame } from '@react-three/fiber'
 
-import { useControls } from 'leva'
-
 const sphere = new THREE.SphereGeometry(1, 16, 16)
 
 const topMaterial = new THREE.MeshBasicMaterial({
@@ -33,6 +31,8 @@ export interface TransitionAPI {
 
 interface TransitionProps extends GroupProps {
   color: string
+
+  animation: (t: number) => { x: number; y: number; r: number }
 }
 
 const Transition = forwardRef<TransitionAPI, TransitionProps>(function Scene(
@@ -62,25 +62,15 @@ const Transition = forwardRef<TransitionAPI, TransitionProps>(function Scene(
     scene,
   }))
 
-  const { spread } = useControls({
-    spread: {
-      value: 40,
-      min: 0,
-      max: 100,
-    },
-  })
-
   const handleStick = (time: number) => {
     if (!stickRef.current) return
 
-    let t = time
-    t = t % 1
+    const t = time
 
-    const o = Math.cos(t * Math.PI)
-
-    stickRef.current.position.y = o * spread * 2
-    stickRef.current.position.x = o * spread
-    stickRef.current.rotation.z = t * Math.PI * 1.2
+    const { x, y, r } = props.animation(t)
+    stickRef.current.position.y = y
+    stickRef.current.position.x = x
+    stickRef.current.rotation.z = r * Math.PI * 2
   }
 
   useFrame(() => {

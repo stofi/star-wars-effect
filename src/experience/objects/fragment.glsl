@@ -22,10 +22,10 @@ void main() {
     
 
     vec4 color = vec4(0.0);
-
-    color += colorA * fadeA;
-    color += colorB * fadeB;
-    color += colorC * fadeC;
+    float offset = 0.1;
+    color += colorA * smoothstep(offset,1.-offset,fadeA);
+    color += colorB * smoothstep(offset,1.-offset,fadeB);
+    color += colorC * smoothstep(offset,1.-offset,fadeC);
 
     
     gl_FragColor = color;
