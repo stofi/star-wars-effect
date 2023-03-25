@@ -11,9 +11,38 @@ import Mug from '#/Mug'
 import Suzanne from '#/Suzanne'
 import MetalMaterial from '$/materials/Metal'
 
+const sphere = new THREE.SphereGeometry(1, 16, 16)
+
+const topMaterial = new THREE.MeshBasicMaterial({
+  color: '#202020',
+  side: THREE.BackSide,
+  transparent: true,
+  opacity: 0.25,
+})
+
+const bottomMaterial = new THREE.MeshBasicMaterial({
+  color: '#020202',
+  side: THREE.BackSide,
+  transparent: true,
+  opacity: 0.25,
+})
+
+const stick = new THREE.CylinderGeometry(0.05, 0.05, 1.5, 16)
+const stickBlue = new THREE.MeshBasicMaterial({ color: '#15f2fd' })
+const stickRed = new THREE.MeshBasicMaterial({ color: '#f00' })
+
+const smoothstep = (x: number, min: number, max: number) => {
+  if (x <= min) return 0
+  if (x >= max) return 1
+
+  x = (x - min) / (max - min)
+
+  return x * x * (3 - 2 * x)
+}
+
 export default function Scene() {
-  const redLightRef = useRef<THREE.PointLight | null>(null)
-  const blueLightRef = useRef<THREE.PointLight | null>(null)
+  // const redLightRef = useRef<THREE.PointLight | null>(null)
+  // const blueLightRef = useRef<THREE.PointLight | null>(null)
   const bunnyMaterialRef = useRef<THREE.MeshPhysicalMaterial | null>(null)
   const mugMaterialRef = useRef<THREE.MeshPhysicalMaterial | null>(null)
   const suzanneMaterialRef = useRef<THREE.MeshPhysicalMaterial | null>(null)
@@ -22,35 +51,37 @@ export default function Scene() {
   const mugRef = useRef<THREE.Group | null>(null)
   const suzanneRef = useRef<THREE.Group | null>(null)
 
-  const { spread, power, powerCurve, timeScale } = useControls({
+  const stickBlueRef = useRef<THREE.Mesh | null>(null)
+  const stickRedRef = useRef<THREE.Mesh | null>(null)
+
+  const { spread, timeScale } = useControls({
     spread: {
       value: 40,
       min: 0,
       max: 100,
     },
-    power: {
-      value: 12,
-      min: 0,
-      max: 100,
-    },
-    powerCurve: {
-      value: 1.4,
-      min: 0,
-      max: 10,
-    },
+
     timeScale: {
-      value: 0.8,
+      value: 0.5,
       min: 0,
       max: 10,
     },
   })
 
-  const handleBunny = (time: number) => {
-    if (!redLightRef.current || !bunnyMaterialRef.current || !bunnyRef.current)
-      return
-
+  const getOpacity = (time: number) => {
     let t = time
     t = t % 1
+
+    let o = Math.sin(t * Math.PI)
+    o = Math.pow(o, 0.8)
+    o = smoothstep(o, 0, 0.75)
+
+    return o
+  }
+
+  const handleBunny = (time: number) => {
+    if (!bunnyMaterialRef.current || !bunnyRef.current) return
+
     const x = time % 3
 
     if (x < 0 || x > 1) {
@@ -59,24 +90,13 @@ export default function Scene() {
       return
     }
     bunnyRef.current.visible = true
-    const p = (t - 0.5) * spread
-    let o = Math.sin(t * Math.PI)
-    o = Math.pow(o, powerCurve)
-    o = Math.max(0, o)
-    o = Math.min(1, o)
 
-    redLightRef.current.position.x = p
-    redLightRef.current.position.y = -p
-    redLightRef.current.power = o * power
-    bunnyMaterialRef.current.opacity = o
+    bunnyMaterialRef.current.opacity = getOpacity(time)
   }
 
   const handleMug = (time: number) => {
-    if (!redLightRef.current || !mugMaterialRef.current || !mugRef.current)
-      return
+    if (!mugMaterialRef.current || !mugRef.current) return
 
-    let t = time
-    t = t % 1
     const x = time % 3
 
     if (x < 2 || x > 3) {
@@ -86,52 +106,69 @@ export default function Scene() {
     }
 
     mugRef.current.visible = true
-    const p = (t - 0.5) * spread
-    let o = Math.sin(t * Math.PI)
-    o = Math.pow(o, powerCurve)
-    o = Math.max(0, o)
-    o = Math.min(1, o)
 
-    redLightRef.current.position.x = p
-    redLightRef.current.position.y = p
-    redLightRef.current.power = o * power
-    mugMaterialRef.current.opacity = o
+    mugMaterialRef.current.opacity = getOpacity(time)
   }
 
   const handleSuzanne = (time: number) => {
-    if (
-      !blueLightRef.current ||
-      !suzanneMaterialRef.current ||
-      !suzanneRef.current ||
-      !redLightRef.current
-    )
-      return
+    if (!suzanneMaterialRef.current || !suzanneRef.current) return
 
-    let t = time
-    t = t % 1
     const x = time % 3
 
     if (x < 1 || x > 2) {
       suzanneRef.current.visible = false
 
-      blueLightRef.current.power = 0
-
       return
     }
 
-    redLightRef.current.power = 0
-
     suzanneRef.current.visible = true
-    const p = (t - 0.5) * spread
-    let o = Math.sin(t * Math.PI)
-    o = Math.pow(o, powerCurve)
-    o = Math.max(0, o)
-    o = Math.min(1, o)
 
-    blueLightRef.current.position.x = p
-    blueLightRef.current.position.y = -p
-    blueLightRef.current.power = o * power
-    suzanneMaterialRef.current.opacity = o
+    suzanneMaterialRef.current.opacity = getOpacity(time)
+  }
+
+  const handleBlueStick = (time: number) => {
+    if (!stickBlueRef.current) return
+
+    let t = time
+    t = t % 1
+
+    stickBlueRef.current.visible = true
+
+    const o = Math.cos(t * Math.PI)
+
+    stickBlueRef.current.position.y = o * spread
+    stickBlueRef.current.position.x = o * spread
+
+    stickBlueRef.current.rotation.z = t * Math.PI
+
+    const x = time % 3
+
+    if (x > 1 && x < 2) {
+      stickBlueRef.current.visible = false
+    } else {
+      stickBlueRef.current.visible = true
+    }
+  }
+
+  const handleRedStick = (time: number) => {
+    if (!stickRedRef.current) return
+
+    let t = time
+    t = t % 1
+
+    stickRedRef.current.visible = true
+    stickRedRef.current.position.y = -Math.cos(t * Math.PI) * spread
+    stickRedRef.current.position.x = Math.sin(t * Math.PI) * spread
+
+    stickRedRef.current.rotation.z = t * Math.PI * -0.7
+
+    const x = time % 3
+
+    if (x < 1 || x > 2) {
+      stickRedRef.current.visible = false
+    } else {
+      stickRedRef.current.visible = true
+    }
   }
 
   useFrame((scene) => {
@@ -140,37 +177,46 @@ export default function Scene() {
     handleSuzanne(time)
     handleMug(time)
     // handleMug(time)
+    handleBlueStick(time)
+    handleRedStick(time)
   })
 
   return (
     <>
       <Environment
+        frames={Infinity}
         background={false}
         // frames={1}
         near={1}
         far={1000}
-        resolution={32}
+        resolution={1024 / 4}
       >
-        <mesh scale={10} position={[5, 10, -10]}>
-          <sphereGeometry args={[1, 64, 64]} />
-          <meshBasicMaterial
-            opacity={1}
-            transparent={true}
-            side={THREE.BackSide}
-            color='#333'
-          />
-        </mesh>
-        <mesh scale={100}>
-          <sphereGeometry args={[1, 64, 64]} />
-          <meshBasicMaterial
-            opacity={0.01}
-            transparent={true}
-            side={THREE.BackSide}
-          />
-        </mesh>
+        <mesh
+          scale={10}
+          position={[5, 10, -10]}
+          geometry={sphere}
+          material={topMaterial}
+        />
+        <mesh scale={100} geometry={sphere} material={bottomMaterial} />
+        <mesh
+          scale={100}
+          ref={stickBlueRef}
+          position={[0, 0, 15]}
+          geometry={stick}
+          material={stickBlue}
+          rotation={[0, 0, Math.PI / 3]}
+        />
+        <mesh
+          scale={100}
+          ref={stickRedRef}
+          position={[0, 0, 15]}
+          geometry={stick}
+          material={stickRed}
+          rotation={[0, 0, -Math.PI / 3]}
+        />
       </Environment>
 
-      <pointLight
+      {/* <pointLight
         ref={redLightRef}
         position={[0, 0, 10]}
         color='red'
@@ -181,9 +227,9 @@ export default function Scene() {
         position={[0, 0, 10]}
         color='#15f2fd'
         intensity={10}
-      />
+      /> */}
 
-      <Float rotationIntensity={0.2} speed={0.1}>
+      <Float rotationIntensity={0.2} speed={4} floatIntensity={0.1}>
         <Bunny ref={bunnyRef} visible={false}>
           <MetalMaterial ref={bunnyMaterialRef} />
         </Bunny>

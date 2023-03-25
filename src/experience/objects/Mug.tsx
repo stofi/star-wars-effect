@@ -10,7 +10,7 @@ import { GroupProps } from '@react-three/fiber'
 
 type GLTFResult = GLTF & {
   nodes: {
-    Cup: THREE.Mesh
+    marble_bust_01: THREE.Mesh
   }
   materials: {
     ['Material.002']: THREE.MeshStandardMaterial
@@ -18,14 +18,12 @@ type GLTFResult = GLTF & {
 }
 
 const Mug = forwardRef<THREE.Group, GroupProps>(function Mug(props, ref) {
-  const { nodes } = useGLTF(
-    'https://market-assets.fra1.cdn.digitaloceanspaces.com/market-assets/models/mug/model.gltf',
-  ) as GLTFResult
+  const { nodes } = useGLTF('marble_bust_01_1k.gltf') as GLTFResult
 
   return (
     <group ref={ref} {...props} dispose={null}>
       <Center>
-        <mesh scale={[0.75, 0.75, 0.75]} geometry={nodes.Cup.geometry}>
+        <mesh scale={[4, 4, 4]} geometry={nodes.marble_bust_01.geometry}>
           {props.children}
         </mesh>
       </Center>
