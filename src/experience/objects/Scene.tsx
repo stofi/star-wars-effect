@@ -14,7 +14,7 @@ import MetalMaterial from '$/materials/Metal'
 const sphere = new THREE.SphereGeometry(1, 16, 16)
 
 const topMaterial = new THREE.MeshBasicMaterial({
-  color: '#202020',
+  color: '#404040',
   side: THREE.BackSide,
   transparent: true,
   opacity: 0.25,
@@ -139,19 +139,23 @@ export default function Scene() {
     const o = Math.cos(t * Math.PI)
 
     if (x > 2) {
-      stickBlueRef.current.position.y = o * spread
+      stickBlueRef.current.position.y = o * spread * 2
       stickBlueRef.current.position.x = o * spread
-      stickBlueRef.current.rotation.z = t * Math.PI * 0.6
+      stickBlueRef.current.rotation.z = t * Math.PI * 1.2
     } else {
       stickBlueRef.current.position.y = -o * spread
       stickBlueRef.current.position.x = -o * spread
-      stickBlueRef.current.rotation.z = t * Math.PI * -1.5
+      stickBlueRef.current.rotation.z = Math.pow(t, 4) * Math.PI * -1.5
     }
 
     if (x > 1 && x < 2) {
       stickBlueRef.current.visible = false
     } else {
       stickBlueRef.current.visible = true
+    }
+
+    if (stickBlueRef.current.material instanceof THREE.MeshBasicMaterial) {
+      stickBlueRef.current.material.opacity = getOpacity(time)
     }
   }
 
@@ -173,6 +177,10 @@ export default function Scene() {
       stickRedRef.current.visible = false
     } else {
       stickRedRef.current.visible = true
+    }
+
+    if (stickRedRef.current.material instanceof THREE.MeshBasicMaterial) {
+      stickRedRef.current.material.opacity = getOpacity(time)
     }
   }
 
@@ -198,7 +206,7 @@ export default function Scene() {
       >
         <mesh
           scale={10}
-          position={[5, 10, -10]}
+          position={[3, 8, -15]}
           geometry={sphere}
           material={topMaterial}
         />

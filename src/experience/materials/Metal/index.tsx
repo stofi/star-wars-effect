@@ -52,7 +52,7 @@ const MetalMaterial = forwardRef<THREE.MeshPhysicalMaterial>(
         normalMap={normal}
         transparent
         opacity={1}
-        envMapIntensity={10}
+        envMapIntensity={4}
       />
     )
   },
