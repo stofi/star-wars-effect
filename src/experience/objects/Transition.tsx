@@ -20,10 +20,9 @@ const bottomMaterial = new THREE.MeshBasicMaterial({
   opacity: 0.25,
 })
 
-const stick = new THREE.CylinderGeometry(0.05, 0.05, 1.5, 16)
+const stick = new THREE.CylinderGeometry(0.05, 0.05, 1, 4)
 
 export interface TransitionAPI {
-  setT: (t: number) => void
   hide: () => void
   show: () => void
   scene: THREE.Scene | null
@@ -32,7 +31,7 @@ export interface TransitionAPI {
 interface TransitionProps extends GroupProps {
   color: string
 
-  animation: (t: number) => { x: number; y: number; r: number }
+  animation: () => { x: number; y: number; r: number }
 }
 
 const Transition = forwardRef<TransitionAPI, TransitionProps>(function Scene(
@@ -43,40 +42,43 @@ const Transition = forwardRef<TransitionAPI, TransitionProps>(function Scene(
 
   const stickRef = useRef<THREE.Mesh | null>(null)
   const stickMaterialRef = useRef<THREE.MeshBasicMaterial | null>(null)
-  const t = useRef(0)
+
+  const active = useRef(false)
 
   const scene = useMemo(() => new THREE.Scene(), [])
 
   useImperativeHandle(ref, () => ({
-    setT: (time: number) => {
-      t.current = time
-    },
     hide: () => {
       if (groupRef.current) groupRef.current.visible = false
       if (stickRef.current) stickRef.current.visible = false
+      active.current = false
     },
     show: () => {
       if (groupRef.current) groupRef.current.visible = true
       if (stickRef.current) stickRef.current.visible = true
+      active.current = true
     },
     scene,
   }))
 
-  const handleStick = (time: number) => {
+  const handleStick = () => {
     if (!stickRef.current) return
 
-    const t = time
-
-    const { x, y, r } = props.animation(t)
+    const { x, y, r } = props.animation()
     stickRef.current.position.y = y
     stickRef.current.position.x = x
-    stickRef.current.rotation.z = r * Math.PI * 2
+    stickRef.current.rotation.z = r * Math.PI
   }
 
   useFrame(() => {
-    const time = t.current
-    // handleChildren(time)
-    handleStick(time)
+    if (!active.current) {
+      scene.visible = false
+
+      return
+    }
+    scene.visible = true
+
+    handleStick()
   })
 
   return createPortal(

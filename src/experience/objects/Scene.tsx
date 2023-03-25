@@ -52,9 +52,9 @@ function interpolate(t: number, startT: number, endT: number, spread: number) {
 }
 
 export default function Scene() {
-  const { timeScale, spread } = useControls({
+  const { timeScale, spread, progress } = useControls({
     timeScale: {
-      value: 0.5,
+      value: 0.8,
       min: 0,
       max: 10,
     },
@@ -63,79 +63,113 @@ export default function Scene() {
       min: 0,
       max: 100,
     },
+    progress: {
+      value: 0,
+      min: 0,
+      max: 3,
+    },
   })
 
-  const transitionARef = useRef<TransitionAPI | null>(null)
-  const transitionBRef = useRef<TransitionAPI | null>(null)
-  const transitionCRef = useRef<TransitionAPI | null>(null)
+  const transition1Ref = useRef<TransitionAPI | null>(null)
+  const transition2Ref = useRef<TransitionAPI | null>(null)
+  const transition3Ref = useRef<TransitionAPI | null>(null)
 
   const screenCamera = useRef<THREE.OrthographicCamera | null>(null)
   const screenMesh = useRef<THREE.Mesh | null>(null)
 
   const renderTargetA = useFBO()
   const renderTargetB = useFBO()
-  const renderTargetC = useFBO()
+  const time = useRef(0)
 
   useFrame(({ gl, camera, clock }) => {
     if (
-      !transitionARef.current ||
-      !transitionBRef.current ||
-      !transitionCRef.current
+      !transition1Ref.current ||
+      !transition2Ref.current ||
+      !transition3Ref.current
     )
       return
     if (!screenMesh.current) return
     const material = screenMesh.current.material as THREE.ShaderMaterial
     if (!material) return
-    const t = clock.elapsedTime * timeScale
-    transitionARef.current.setT(t)
-    transitionBRef.current.setT(t)
-    transitionCRef.current.setT(t)
-    const scene1 = transitionARef.current.scene
-    const scene2 = transitionBRef.current.scene
-    const scene3 = transitionCRef.current.scene
-    // console.log(camera)
+    const t = (clock.elapsedTime * timeScale) % 12
+    time.current = clock.elapsedTime * timeScale
 
+    const scene1 = transition1Ref.current.scene
+    const scene2 = transition2Ref.current.scene
+    const scene3 = transition3Ref.current.scene
+    // console.log(camera)
+    let sceneA: THREE.Scene
+    let sceneB: THREE.Scene
     if (!scene1 || !scene2 || !scene3) return
+
+    if (t < 1.5) {
+      transition1Ref.current.show()
+      transition2Ref.current.hide()
+      sceneA = scene3
+      sceneB = scene1
+    } else if (t < 3) {
+      transition2Ref.current.show()
+      transition3Ref.current.hide()
+      sceneB = scene1
+      sceneA = scene2
+    } else if (t < 4.5) {
+      transition3Ref.current.show()
+      transition1Ref.current.hide()
+      sceneA = scene2
+      sceneB = scene3
+    } else if (t < 6) {
+      transition1Ref.current.show()
+      transition2Ref.current.hide()
+      sceneB = scene3
+      sceneA = scene1
+    } else if (t < 7.5) {
+      transition2Ref.current.show()
+      transition3Ref.current.hide()
+      sceneA = scene1
+      sceneB = scene2
+    } else if (t < 9) {
+      transition3Ref.current.show()
+      transition1Ref.current.hide()
+      sceneB = scene2
+      sceneA = scene3
+    } else {
+      transition1Ref.current.show()
+      transition2Ref.current.hide()
+      sceneA = scene3
+      sceneB = scene1
+    }
+
     gl.setRenderTarget(renderTargetA)
-    gl.render(scene1, camera)
+    gl.render(sceneA, camera)
 
     gl.setRenderTarget(renderTargetB)
-    gl.render(scene2, camera)
-
-    gl.setRenderTarget(renderTargetC)
-    gl.render(scene3, camera)
+    gl.render(sceneB, camera)
 
     material.uniforms.textureA.value = renderTargetA.texture
     material.uniforms.textureB.value = renderTargetB.texture
-    material.uniforms.textureC.value = renderTargetC.texture
 
-    const offset = 0.2
-    const x = (t % (3 + offset * 2)) - offset
-
-    material.uniforms.fadeA.value =
-      interpolate(x, 0, 1, offset) + interpolate(x, 3, 4, offset)
-    material.uniforms.fadeB.value = interpolate(x, 1, 2, offset)
-    material.uniforms.fadeC.value = interpolate(x, 2, 3, offset)
+    const x = t % 3
+    material.uniforms.fade.value = interpolate(x, 1 - 1 / 3, 2 + 1 / 3, 0.2)
 
     gl.setRenderTarget(null)
   })
 
-  const animationA = (t: number) => ({
-    x: Math.sin(t) * spread,
-    y: Math.cos(t) * spread,
-    r: t * 0.6,
+  const animationA = () => ({
+    x: -Math.cos(time.current * Math.PI) * spread,
+    y: -Math.cos(time.current * Math.PI) * spread,
+    r: time.current * -0.5,
   })
 
-  const animationB = (t: number) => ({
-    x: Math.sin(t) * spread,
-    y: Math.cos(t) * spread,
-    r: t,
+  const animationB = () => ({
+    x: Math.sin(time.current * Math.PI) * spread,
+    y: -Math.cos(time.current * Math.PI) * spread,
+    r: time.current * 0.7,
   })
 
-  const animationC = (t: number) => ({
-    x: (Math.abs((t % 2) - 1) - 0.5) * spread,
-    y: 0,
-    r: t * 1.2,
+  const animationC = () => ({
+    x: Math.cos(time.current * Math.PI * 0.5) * spread,
+    y: Math.cos(time.current * Math.PI) * spread * 2,
+    r: time.current * 0.2,
   })
 
   return (
@@ -154,16 +188,7 @@ export default function Scene() {
             textureB: {
               value: null,
             },
-            textureC: {
-              value: null,
-            },
-            fadeA: {
-              value: 0,
-            },
-            fadeB: {
-              value: 0,
-            },
-            fadeC: {
+            fade: {
               value: 0,
             },
           }}
@@ -172,17 +197,17 @@ export default function Scene() {
         />
       </mesh>
 
-      <Transition ref={transitionARef} color='#15f2fd' animation={animationA}>
+      <Transition ref={transition1Ref} color='#15f2fd' animation={animationA}>
         <Bunny>
           <MetalMaterial />
         </Bunny>
       </Transition>
-      <Transition ref={transitionBRef} color='red' animation={animationB}>
+      <Transition ref={transition2Ref} color='red' animation={animationB}>
         <Suzanne>
           <MetalMaterial />
         </Suzanne>
       </Transition>
-      <Transition ref={transitionCRef} color='green' animation={animationC}>
+      <Transition ref={transition3Ref} color='green' animation={animationC}>
         <Mug>
           <MetalMaterial />
         </Mug>
