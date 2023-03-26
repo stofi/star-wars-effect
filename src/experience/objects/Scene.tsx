@@ -1,13 +1,8 @@
 import * as THREE from 'three'
 import { BufferGeometry, Float32BufferAttribute } from 'three'
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 
-import {
-  Environment,
-  Float,
-  OrthographicCamera,
-  useFBO,
-} from '@react-three/drei'
+import { OrthographicCamera, useFBO } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 
 import { useControls } from 'leva'
@@ -52,7 +47,7 @@ function interpolate(t: number, startT: number, endT: number, spread: number) {
 }
 
 export default function Scene() {
-  const { timeScale, spread, progress } = useControls({
+  const { timeScale, spread } = useControls({
     timeScale: {
       value: 0.8,
       min: 0,
@@ -62,11 +57,6 @@ export default function Scene() {
       value: 20,
       min: 0,
       max: 100,
-    },
-    progress: {
-      value: 0,
-      min: 0,
-      max: 3,
     },
   })
 
@@ -81,6 +71,12 @@ export default function Scene() {
   const renderTargetB = useFBO()
   const time = useRef(0)
 
+  useEffect(() => {
+    if (transition1Ref.current) transition1Ref.current.show()
+    if (transition2Ref.current) transition2Ref.current.show()
+    if (transition3Ref.current) transition3Ref.current.show()
+  })
+
   useFrame(({ gl, camera, clock }) => {
     if (
       !transition1Ref.current ||
@@ -91,7 +87,7 @@ export default function Scene() {
     if (!screenMesh.current) return
     const material = screenMesh.current.material as THREE.ShaderMaterial
     if (!material) return
-    const t = (clock.elapsedTime * timeScale) % 12
+    const t = (clock.elapsedTime * timeScale) % 6
     time.current = clock.elapsedTime * timeScale
 
     const scene1 = transition1Ref.current.scene
@@ -102,41 +98,26 @@ export default function Scene() {
     let sceneB: THREE.Scene
     if (!scene1 || !scene2 || !scene3) return
 
-    if (t < 1.5) {
-      transition1Ref.current.show()
-      transition2Ref.current.hide()
-      sceneA = scene3
-      sceneB = scene1
-    } else if (t < 3) {
-      transition2Ref.current.show()
-      transition3Ref.current.hide()
-      sceneB = scene1
-      sceneA = scene2
-    } else if (t < 4.5) {
-      transition3Ref.current.show()
-      transition1Ref.current.hide()
-      sceneA = scene2
-      sceneB = scene3
-    } else if (t < 6) {
-      transition1Ref.current.show()
-      transition2Ref.current.hide()
-      sceneB = scene3
+    const o = 0.2
+
+    if (t < 1 + o) {
       sceneA = scene1
-    } else if (t < 7.5) {
-      transition2Ref.current.show()
-      transition3Ref.current.hide()
-      sceneA = scene1
-      sceneB = scene2
-    } else if (t < 9) {
-      transition3Ref.current.show()
-      transition1Ref.current.hide()
-      sceneB = scene2
+    } else if (t < 3 + o) {
       sceneA = scene3
+    } else if (t < 5 + o) {
+      sceneA = scene2
     } else {
-      transition1Ref.current.show()
-      transition2Ref.current.hide()
-      sceneA = scene3
+      sceneA = scene1
+    }
+
+    if (t < o) {
+      sceneB = scene3
+    } else if (t < 2 + o) {
+      sceneB = scene2
+    } else if (t < 4 + o) {
       sceneB = scene1
+    } else {
+      sceneB = scene3
     }
 
     gl.setRenderTarget(renderTargetA)
@@ -148,8 +129,16 @@ export default function Scene() {
     material.uniforms.textureA.value = renderTargetA.texture
     material.uniforms.textureB.value = renderTargetB.texture
 
-    const x = t % 3
-    material.uniforms.fade.value = interpolate(x, 1 - 1 / 3, 2 + 1 / 3, 0.2)
+    material.uniforms.fadeA.value =
+      interpolate(t, 0, 1, o) +
+      interpolate(t, 2, 3, o) +
+      interpolate(t, 4, 5, o) +
+      interpolate(t, 6, 7, o)
+
+    material.uniforms.fadeB.value =
+      interpolate(t, 1, 2, o) +
+      interpolate(t, 3, 4, o) +
+      interpolate(t, 5, 6, o)
 
     gl.setRenderTarget(null)
   })
@@ -163,12 +152,12 @@ export default function Scene() {
   const animationB = () => ({
     x: Math.sin(time.current * Math.PI) * spread,
     y: -Math.cos(time.current * Math.PI) * spread,
-    r: time.current * 0.7,
+    r: time.current * 1.2,
   })
 
   const animationC = () => ({
     x: Math.cos(time.current * Math.PI * 0.5) * spread,
-    y: Math.cos(time.current * Math.PI) * spread * 2,
+    y: Math.cos(time.current * Math.PI * 0.25) * spread * 2,
     r: time.current * 0.2,
   })
 
@@ -188,7 +177,10 @@ export default function Scene() {
             textureB: {
               value: null,
             },
-            fade: {
+            fadeA: {
+              value: 0,
+            },
+            fadeB: {
               value: 0,
             },
           }}

@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 
-import { PerformanceMonitor } from '@react-three/drei'
+import { OrbitControls, PerformanceMonitor } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
 import { Debug, Physics } from '@react-three/rapier'
 
@@ -32,6 +32,7 @@ export default function Experience(props: { enableDebug?: boolean }) {
         <Suspense>
           <Physics>
             {props.enableDebug && <Debug />}
+            <OrbitControls />
             <Effects />
             <Scene />
           </Physics>
