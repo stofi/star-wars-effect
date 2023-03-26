@@ -31,7 +31,7 @@ export interface TransitionAPI {
 interface TransitionProps extends GroupProps {
   color: string
 
-  animation: () => { x: number; y: number; r: number }
+  animation: () => { x?: number; y?: number; r?: number }
 }
 
 const Transition = forwardRef<TransitionAPI, TransitionProps>(function Scene(
@@ -65,9 +65,9 @@ const Transition = forwardRef<TransitionAPI, TransitionProps>(function Scene(
     if (!stickRef.current) return
 
     const { x, y, r } = props.animation()
-    stickRef.current.position.y = y
-    stickRef.current.position.x = x
-    stickRef.current.rotation.z = r * Math.PI
+    stickRef.current.position.y = y ?? 0
+    stickRef.current.position.x = x ?? 0
+    stickRef.current.rotation.z = (r ?? 0) * Math.PI
   }
 
   useFrame(() => {

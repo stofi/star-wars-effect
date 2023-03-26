@@ -47,7 +47,7 @@ function interpolate(t: number, startT: number, endT: number, spread: number) {
 }
 
 export default function Scene() {
-  const { timeScale, spread } = useControls({
+  const { timeScale, spread, renderA, renderB, renderC } = useControls({
     timeScale: {
       value: 0.8,
       min: 0,
@@ -57,6 +57,15 @@ export default function Scene() {
       value: 20,
       min: 0,
       max: 100,
+    },
+    renderA: {
+      value: false,
+    },
+    renderB: {
+      value: false,
+    },
+    renderC: {
+      value: false,
     },
   })
 
@@ -97,6 +106,45 @@ export default function Scene() {
     let sceneA: THREE.Scene
     let sceneB: THREE.Scene
     if (!scene1 || !scene2 || !scene3) return
+
+    if (renderA) {
+      sceneA = scene1
+      gl.setRenderTarget(renderTargetA)
+      gl.render(sceneA, camera)
+      material.uniforms.textureA.value = renderTargetA.texture
+      material.uniforms.fadeA.value = 1
+      material.uniforms.fadeB.value = 0
+
+      gl.setRenderTarget(null)
+
+      return
+    }
+
+    if (renderB) {
+      sceneA = scene2
+      gl.setRenderTarget(renderTargetA)
+      gl.render(sceneA, camera)
+      material.uniforms.textureA.value = renderTargetA.texture
+      material.uniforms.fadeA.value = 1
+      material.uniforms.fadeB.value = 0
+
+      gl.setRenderTarget(null)
+
+      return
+    }
+
+    if (renderC) {
+      sceneA = scene3
+      gl.setRenderTarget(renderTargetA)
+      gl.render(sceneA, camera)
+      material.uniforms.textureA.value = renderTargetA.texture
+      material.uniforms.fadeA.value = 1
+      material.uniforms.fadeB.value = 0
+
+      gl.setRenderTarget(null)
+
+      return
+    }
 
     const o = 0.2
 
@@ -156,9 +204,9 @@ export default function Scene() {
   })
 
   const animationC = () => ({
-    x: Math.cos(time.current * Math.PI * 0.5) * spread,
-    y: Math.cos(time.current * Math.PI * 0.25) * spread * 2,
-    r: time.current * 0.2,
+    y: Math.abs((time.current % 1) - 0.5) * 2 * spread,
+    x: Math.cos(time.current * Math.PI) * spread * 10,
+    r: Math.sin(time.current) * 2,
   })
 
   return (
